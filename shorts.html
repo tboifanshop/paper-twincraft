@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Deltatube Shorts ♦</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000; color: #fff;
+      font-family: 'Press Start 2P', 'Courier New', monospace;
+    }
+
+    /* ─── NAV ─── */
+    #nav-bar {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: 36px; z-index: 200;
+      background: rgba(0,0,0,0.92);
+      border-bottom: 2px solid #5fa8d3;
+      display: flex; align-items: center; gap: 14px; padding: 0 12px;
+      font-size: 9px;
+    }
+    #nav-bar .logo { color: #5fa8d3; font-size: 10px; letter-spacing: 1px; }
+    #nav-bar a { color: #aaa; text-decoration: none; transition: color 0.15s; }
+    #nav-bar a:hover { color: #fff; }
+    #nav-bar .current { color: #fff; }
+
+    /* ─── ARENA ─── */
+    #arena {
+      position: fixed; top: 36px; left: 0; right: 0; bottom: 0;
+      overflow: hidden; background: #0d0d14;
+    }
+
+    /* CRT scanline overlay */
+    #arena::before {
+      content: ''; position: absolute; inset: 0; z-index: 2;
+      background: repeating-linear-gradient(
+        0deg, transparent, transparent 3px,
+        rgba(0,0,0,0.06) 3px, rgba(0,0,0,0.06) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* ─── VIDEO ─── */
+    #video-wrap {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      aspect-ratio: 9/16;
+      height: 100%; max-width: 100%;
+      background: #000;
+      border: 1px solid rgba(95,168,211,0.15);
+      transition: opacity 0.3s;
+    }
+    #yt-frame {
+      width: 100%; height: 100%; border: none;
+      pointer-events: none;
+    }
+
+    /* ─── SHORT INFO ─── */
+    #short-info {
+      position: absolute; bottom: 64px; left: 12px;
+      max-width: calc(100% - 120px); z-index: 10;
+      pointer-events: none;
+    }
+    #short-title {
+      font-size: 8px; line-height: 1.7;
+      text-shadow: 0 1px 6px #000;
+      margin-bottom: 6px; color: #fff;
+    }
+    #short-author { font-size: 7px; color: #7fc8e8; }
+
+    #short-counter {
+      position: absolute; top: 8px; right: 12px;
+      font-size: 7px; color: #5fa8d3; z-index: 10;
+      pointer-events: none;
+    }
+
+    /* ─── INTERACT PANEL ─── */
+    #interact-panel {
+      position: absolute; right: 10px; bottom: 80px;
+      display: flex; flex-direction: column; gap: 14px;
+      align-items: flex-end; z-index: 15;
+    }
+    .interact-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 7px;
+      padding: 9px 11px;
+      border: 2px solid rgba(255,255,255,0.4);
+      background: rgba(0,0,0,0.65);
+      color: #fff;
+      border-radius: 3px;
+      position: relative;
+      min-width: 84px;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 0.15s, color 0.15s, transform 0.1s;
+    }
+    .interact-btn.soul-hover { border-color: rgba(255,255,255,0.9); }
+    #like-btn.liked { color: #ffe600; border-color: #ffe600; }
+    #sub-btn.subscribed { color: #5fa8d3; border-color: #5fa8d3; }
+
+    /* Hold progress bar (bottom of button) */
+    .btn-bar {
+      position: absolute; bottom: 0; left: 0;
+      height: 3px; width: 0%;
+      border-radius: 0 0 1px 1px;
+      transition: width 0.05s linear;
+    }
+    #like-btn .btn-bar { background: #ffe600; }
+    #sub-btn .btn-bar { background: #5fa8d3; }
+
+    /* ─── EDGE ZONES ─── */
+    .edge-zone {
+      position: absolute; left: 0; right: 0; height: 15%;
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; z-index: 12; pointer-events: none;
+      opacity: 0; transition: opacity 0.2s, background 0.2s;
+    }
+    #top-zone { top: 0; }
+    #bottom-zone { bottom: 0; }
+    .edge-zone.active { opacity: 1; }
+    #top-zone.active { background: rgba(95,168,211,0.18); }
+    #bottom-zone.active { background: rgba(255,100,60,0.18); }
+
+    .edge-zone svg { width: 44px; height: 44px; flex-shrink: 0; }
+    .zone-label { font-size: 7px; }
+    #top-zone .zone-label { color: #5fa8d3; }
+    #bottom-zone .zone-label { color: #ff6644; }
+
+    /* ─── SOUL ─── */
+    #soul-canvas {
+      position: absolute; z-index: 20;
+      pointer-events: none;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      /* subtle glow */
+      filter: drop-shadow(0 0 4px rgba(255,60,60,0.7));
+    }
+
+    /* ─── DPAD ─── */
+    #dpad {
+      position: fixed; bottom: 24px; left: 24px;
+      width: 130px; height: 130px;
+      z-index: 100; touch-action: none;
+      display: none;
+    }
+    @media (pointer: coarse) { #dpad { display: block; } }
+
+    /* ─── CONTROLS HINT ─── */
+    #controls-hint {
+      position: fixed; bottom: 10px; right: 10px;
+      font-size: 6px; color: rgba(255,255,255,0.3);
+      line-height: 2.2; text-align: right; z-index: 50;
+      pointer-events: none;
+    }
+    @media (pointer: coarse) { #controls-hint { display: none; } }
+
+    /* ─── PIXEL EXPLOSION PARTICLES ─── */
+    .px-particle {
+      position: fixed; pointer-events: none; z-index: 300;
+      border-radius: 0;
+    }
+
+    /* ─── TRANSITION WHEN LOADING SHORT ─── */
+    #video-wrap.fading { opacity: 0; }
+
+    /* ─── REDUCED MOTION ─── */
+    @media (prefers-reduced-motion: reduce) {
+      .edge-zone, .interact-btn, #video-wrap { transition: none; }
+      #soul-canvas { filter: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Nav bar ── -->
+  <nav id="nav-bar">
+    <span class="logo">&#9670; DELTATUBE</span>
+    <a href="index.html">Home</a>
+    <span class="current">&#9654; Shorts</span>
+  </nav>
+
+  <!-- ── Shorts arena ── -->
+  <div id="arena">
+    <!-- Video -->
+    <div id="video-wrap">
+      <iframe id="yt-frame"
+        allow="autoplay; encrypted-media; picture-in-picture"
+        allowfullscreen>
+      </iframe>
+    </div>
+
+    <!-- Short info -->
+    <div id="short-info">
+      <div id="short-title">Loading&#8230;</div>
+      <div id="short-author"></div>
+    </div>
+    <div id="short-counter"></div>
+
+    <!-- Interact panel -->
+    <div id="interact-panel">
+      <div id="sub-btn" class="interact-btn">
+        Subscribe
+        <div class="btn-bar" id="sub-bar"></div>
+      </div>
+      <div id="like-btn" class="interact-btn">
+        &#9825; Like
+        <div class="btn-bar" id="like-bar"></div>
+      </div>
+    </div>
+
+    <!-- Top edge zone (prev) -->
+    <div class="edge-zone" id="top-zone">
+      <svg viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="18" fill="none"
+          stroke="rgba(95,168,211,0.25)" stroke-width="3"/>
+        <circle id="top-arc" cx="22" cy="22" r="18" fill="none"
+          stroke="#5fa8d3" stroke-width="3"
+          stroke-dasharray="113.1" stroke-dashoffset="113.1"
+          stroke-linecap="round" transform="rotate(-90 22 22)"/>
+      </svg>
+      <span class="zone-label">&#9650; PREV</span>
+    </div>
+
+    <!-- Bottom edge zone (next) -->
+    <div class="edge-zone" id="bottom-zone">
+      <svg viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="18" fill="none"
+          stroke="rgba(255,100,60,0.25)" stroke-width="3"/>
+        <circle id="bottom-arc" cx="22" cy="22" r="18" fill="none"
+          stroke="#ff6644" stroke-width="3"
+          stroke-dasharray="113.1" stroke-dashoffset="113.1"
+          stroke-linecap="round" transform="rotate(-90 22 22)"/>
+      </svg>
+      <span class="zone-label">&#9660; NEXT</span>
+    </div>
+
+    <!-- Soul pixel-art heart canvas -->
+    <canvas id="soul-canvas" aria-label="Soul" role="img"></canvas>
+  </div>
+
+  <!-- ── Mobile D-pad ── -->
+  <div id="dpad" aria-label="Directional pad" role="group">
+    <canvas id="dpad-canvas" width="130" height="130"></canvas>
+  </div>
+
+  <!-- ── Desktop controls hint ── -->
+  <div id="controls-hint" aria-hidden="true">
+    WASD / ARROWS &#8594; move soul<br>
+    Hold &#9650; top edge &#8594; prev short<br>
+    Hold &#9660; bottom edge &#8594; next short<br>
+    Hold on LIKE / SUBSCRIBE &#8594; interact
+  </div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DELTATUBE SHORTS  —  Soul Controller
+// ═══════════════════════════════════════════════════════
+
+// ── Sample shorts data (hardcoded) ──
+const SHORTS = [
+  { id: "jNQXAC9IVRw", title: "Me at the zoo",          author: "jawed"         },
+  { id: "QH2-TGUlwu4", title: "Nyan Cat [original]",    author: "saraj00n"      },
+  { id: "kffacxfA7G4", title: "Baby Shark Dance",        author: "Pinkfong"      },
+  { id: "OPf0YbXqDm0", title: "Shape of You (cover)",   author: "Ed Sheeran"    },
+  { id: "9bZkp7q19f0", title: "Gangnam Style",           author: "PSY"           },
+  { id: "JGwWNGJdvx8", title: "Despacito",               author: "Luis Fonsi"    },
+];
+
+// ── Soul pixel-art heart (8 × 6 grid, 3 px per pixel = 24×18 canvas) ──
+const SOUL_PIXELS = [
+  [0,1,1,0,0,1,1,0],
+  [1,1,1,1,1,1,1,1],
+  [1,1,1,1,1,1,1,1],
+  [0,1,1,1,1,1,1,0],
+  [0,0,1,1,1,1,0,0],
+  [0,0,0,1,1,0,0,0],
+];
+const PX      = 3;             // pixel size in canvas units
+const SOUL_W  = 8 * PX;        // 24 px
+const SOUL_H  = 6 * PX;        // 18 px
+
+// ── Constants ──
+const SPEED    = 4;            // px per animation frame
+const HOLD_MS  = 2000;         // hold duration to trigger
+const EDGE_PCT = 0.15;         // 15 % of arena height = edge zone
+const CIRC     = 113.1;        // stroke circumference (2π × r=18)
+
+// ── State ──
+let idx       = 0;
+let soulX     = 0, soulY = 0;
+const keys    = {};
+const liked       = new Set();  // stores short index
+const subscribed  = new Set();  // stores author string
+
+let holdTarget = null;   // 'top' | 'bottom' | 'like' | 'sub' | null
+let holdStart  = 0;
+let holdDone   = false;
+
+// D-pad velocity (−1, 0, +1 per axis)
+let dpVx = 0, dpVy = 0;
+
+// ── DOM refs ──
+const arena       = document.getElementById('arena');
+const videoWrap   = document.getElementById('video-wrap');
+const ytFrame     = document.getElementById('yt-frame');
+const shortTitle  = document.getElementById('short-title');
+const shortAuthor = document.getElementById('short-author');
+const shortCtr    = document.getElementById('short-counter');
+const likeBtn     = document.getElementById('like-btn');
+const subBtn      = document.getElementById('sub-btn');
+const likeBar     = document.getElementById('like-bar');
+const subBar      = document.getElementById('sub-bar');
+const topZone     = document.getElementById('top-zone');
+const bottomZone  = document.getElementById('bottom-zone');
+const topArc      = document.getElementById('top-arc');
+const bottomArc   = document.getElementById('bottom-arc');
+const soulCanvas  = document.getElementById('soul-canvas');
+const soulCtx     = soulCanvas.getContext('2d');
+const dpadEl      = document.getElementById('dpad');
+const dpadCanvas  = document.getElementById('dpad-canvas');
+const dpadCtx     = dpadCanvas.getContext('2d');
+
+// ══════════════════════════════════════
+//  DRAW SOUL (pixel-art heart on canvas)
+// ══════════════════════════════════════
+function drawSoul() {
+  soulCanvas.width  = SOUL_W;
+  soulCanvas.height = SOUL_H;
+  soulCtx.imageSmoothingEnabled = false;
+  for (let r = 0; r < SOUL_PIXELS.length; r++) {
+    for (let c = 0; c < SOUL_PIXELS[r].length; c++) {
+      if (SOUL_PIXELS[r][c]) {
+        soulCtx.fillStyle = '#ff3333';
+        soulCtx.fillRect(c * PX, r * PX, PX, PX);
+      }
+    }
+  }
+}
+
+// ══════════════════════════════════════
+//  DRAW D-PAD (Joy-Con style analog)
+// ══════════════════════════════════════
+function drawDpad(kx, ky) {
+  const W = 130, H = 130, cx = W / 2, cy = H / 2;
+  dpadCtx.clearRect(0, 0, W, H);
+
+  // Outer disk
+  dpadCtx.beginPath();
+  dpadCtx.arc(cx, cy, 56, 0, Math.PI * 2);
+  dpadCtx.fillStyle = 'rgba(30,30,48,0.88)';
+  dpadCtx.fill();
+  dpadCtx.strokeStyle = '#5fa8d3';
+  dpadCtx.lineWidth = 2;
+  dpadCtx.stroke();
+
+  // Plus-shape grooves
+  dpadCtx.strokeStyle = 'rgba(95,168,211,0.3)';
+  dpadCtx.lineWidth = 1.5;
+  dpadCtx.beginPath();
+  dpadCtx.moveTo(cx, cy - 50); dpadCtx.lineTo(cx, cy + 50);
+  dpadCtx.moveTo(cx - 50, cy); dpadCtx.lineTo(cx + 50, cy);
+  dpadCtx.stroke();
+
+  // Arrow labels
+  dpadCtx.fillStyle = 'rgba(255,255,255,0.45)';
+  dpadCtx.font = '13px sans-serif';
+  dpadCtx.textAlign = 'center';
+  dpadCtx.textBaseline = 'middle';
+  dpadCtx.fillText('\u25B2', cx,      cy - 32);
+  dpadCtx.fillText('\u25BC', cx,      cy + 32);
+  dpadCtx.fillText('\u25C4', cx - 32, cy);
+  dpadCtx.fillText('\u25BA', cx + 32, cy);
+
+  // Movable knob (follows touch direction)
+  const knobX = cx + kx * 20;
+  const knobY = cy + ky * 20;
+  dpadCtx.beginPath();
+  dpadCtx.arc(knobX, knobY, 16, 0, Math.PI * 2);
+  dpadCtx.fillStyle = '#cc2222';
+  dpadCtx.fill();
+  dpadCtx.strokeStyle = 'rgba(255,255,255,0.6)';
+  dpadCtx.lineWidth = 2;
+  dpadCtx.stroke();
+  // Mini heart on knob
+  dpadCtx.fillStyle = '#ff6666';
+  dpadCtx.fillRect(knobX - 3, knobY - 2, 2, 2);
+  dpadCtx.fillRect(knobX + 1, knobY - 2, 2, 2);
+  dpadCtx.fillRect(knobX - 4, knobY - 1, 8, 2);
+  dpadCtx.fillRect(knobX - 3, knobY + 1, 6, 2);
+  dpadCtx.fillRect(knobX - 2, knobY + 3, 4, 1);
+  dpadCtx.fillRect(knobX - 1, knobY + 4, 2, 1);
+}
+
+// ══════════════════════════════════════
+//  LOAD SHORT
+// ══════════════════════════════════════
+function loadShort(newIdx) {
+  idx = ((newIdx % SHORTS.length) + SHORTS.length) % SHORTS.length;
+  const s = SHORTS[idx];
+
+  // Fade out → swap iframe src → fade in
+  videoWrap.classList.add('fading');
+  setTimeout(() => {
+    ytFrame.src =
+      'https://www.youtube-nocookie.com/embed/' + s.id +
+      '?autoplay=1&mute=1&loop=1&playlist=' + s.id +
+      '&controls=1&modestbranding=1&rel=0';
+    shortTitle.textContent  = s.title;
+    shortAuthor.textContent = '\u2665 ' + s.author;
+    shortCtr.textContent    = (idx + 1) + ' / ' + SHORTS.length;
+    updateLikeStyle();
+    updateSubStyle();
+    videoWrap.classList.remove('fading');
+  }, 280);
+}
+
+function updateLikeStyle() {
+  likeBtn.classList.toggle('liked', liked.has(idx));
+}
+function updateSubStyle() {
+  subBtn.classList.toggle('subscribed', subscribed.has(SHORTS[idx].author));
+}
+
+// ══════════════════════════════════════
+//  PIXEL EXPLOSION
+// ══════════════════════════════════════
+function explode(el) {
+  const rect  = el.getBoundingClientRect();
+  const ox    = rect.left + rect.width  / 2;
+  const oy    = rect.top  + rect.height / 2;
+  const colors = ['#5fa8d3','#ffffff','#ffe600','#ff3333','#7fffcc','#5fa8d3'];
+  const COUNT  = 22;
+  const frags  = [];
+
+  for (let i = 0; i < COUNT; i++) {
+    const p     = document.createElement('div');
+    p.className = 'px-particle';
+    const angle = (i / COUNT) * Math.PI * 2;
+    const spd   = 2 + Math.random() * 4;
+    const sz    = Math.random() < 0.5 ? 4 : 6;
+    p.style.cssText =
+      'left:' + ox + 'px;top:' + oy + 'px;' +
+      'width:' + sz + 'px;height:' + sz + 'px;' +
+      'background:' + colors[i % colors.length] + ';';
+    document.body.appendChild(p);
+    frags.push({
+      el: p,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      life: 1.0,
+    });
+  }
+
+  let last = performance.now();
+  function step(now) {
+    const dt   = Math.min((now - last) / 16, 3);
+    last = now;
+    let alive  = false;
+    for (const f of frags) {
+      if (f.life <= 0) { if (f.el.parentNode) f.el.remove(); continue; }
+      alive   = true;
+      f.life -= 0.04 * dt;
+      f.vy   += 0.15 * dt;
+      const x = parseFloat(f.el.style.left) + f.vx * dt;
+      const y = parseFloat(f.el.style.top)  + f.vy * dt;
+      f.el.style.left    = x + 'px';
+      f.el.style.top     = y + 'px';
+      f.el.style.opacity = Math.max(0, f.life).toString();
+    }
+    if (alive) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ══════════════════════════════════════
+//  COLLISION: soul bounding box vs element
+// ══════════════════════════════════════
+function soulOverlaps(el) {
+  const ar  = arena.getBoundingClientRect();
+  const er  = el.getBoundingClientRect();
+  const ex  = er.left - ar.left;
+  const ey  = er.top  - ar.top;
+  const PAD = 10; // generous hitbox padding
+  return !(
+    soulX + SOUL_W < ex - PAD ||
+    soulX          > ex + er.width  + PAD ||
+    soulY + SOUL_H < ey - PAD ||
+    soulY          > ey + er.height + PAD
+  );
+}
+
+// ── Edge zone check ──
+function getSoulZone() {
+  const H    = arena.offsetHeight;
+  const edge = H * EDGE_PCT;
+  if (soulY < edge)                    return 'top';
+  if (soulY + SOUL_H > H - edge)       return 'bottom';
+  return null;
+}
+
+// ── Determine what the soul is targeting ──
+function getHoldTarget() {
+  const zone = getSoulZone();
+  if (zone)                   return zone;
+  if (soulOverlaps(likeBtn))  return 'like';
+  if (soulOverlaps(subBtn))   return 'sub';
+  return null;
+}
+
+// ── Update SVG arc progress (0–1) ──
+function setArcPct(arcEl, pct) {
+  arcEl.style.strokeDashoffset = (CIRC * (1 - pct)).toString();
+}
+function resetArc(arcEl) {
+  arcEl.style.strokeDashoffset = CIRC.toString();
+}
+
+// ── Trigger a completed hold action ──
+function triggerAction(target) {
+  if (target === 'top') {
+    loadShort(idx - 1);
+  } else if (target === 'bottom') {
+    loadShort(idx + 1);
+  } else if (target === 'like') {
+    if (liked.has(idx)) liked.delete(idx); else liked.add(idx);
+    updateLikeStyle();
+    likeBtn.style.transform = 'scale(1.18)';
+    setTimeout(() => { likeBtn.style.transform = ''; }, 200);
+  } else if (target === 'sub') {
+    const author = SHORTS[idx].author;
+    if (subscribed.has(author)) subscribed.delete(author);
+    else subscribed.add(author);
+    updateSubStyle();
+    explode(subBtn);
+  }
+}
+
+// ══════════════════════════════════════
+//  MAIN ANIMATION LOOP
+// ══════════════════════════════════════
+function tick() {
+  const aW = arena.offsetWidth;
+  const aH = arena.offsetHeight;
+
+  // ── Move soul ──
+  let dx = 0, dy = 0;
+  if (keys['ArrowLeft']  || keys['a'] || keys['A']) dx -= 1;
+  if (keys['ArrowRight'] || keys['d'] || keys['D']) dx += 1;
+  if (keys['ArrowUp']    || keys['w'] || keys['W']) dy -= 1;
+  if (keys['ArrowDown']  || keys['s'] || keys['S']) dy += 1;
+  // Add d-pad contribution
+  dx += dpVx;
+  dy += dpVy;
+  // Normalise diagonal so speed is consistent
+  const mag = Math.sqrt(dx * dx + dy * dy);
+  if (mag > 1) { dx /= mag; dy /= mag; }
+
+  soulX = Math.max(0, Math.min(aW - SOUL_W, soulX + dx * SPEED));
+  soulY = Math.max(0, Math.min(aH - SOUL_H, soulY + dy * SPEED));
+  soulCanvas.style.left = soulX + 'px';
+  soulCanvas.style.top  = soulY + 'px';
+
+  // ── Hold-target logic ──
+  const target = getHoldTarget();
+  const now    = Date.now();
+
+  if (target !== holdTarget) {
+    // Entered a new target (or left current one) → reset
+    holdTarget = target;
+    holdStart  = now;
+    holdDone   = false;
+    resetArc(topArc);
+    resetArc(bottomArc);
+    likeBar.style.width = '0%';
+    subBar.style.width  = '0%';
+  }
+
+  // Update zone visuals
+  topZone.classList.toggle('active', target === 'top');
+  bottomZone.classList.toggle('active', target === 'bottom');
+  likeBtn.classList.toggle('soul-hover', target === 'like');
+  subBtn.classList.toggle('soul-hover', target === 'sub');
+
+  // Advance progress if not yet done
+  if (target && !holdDone) {
+    const elapsed = now - holdStart;
+    const pct     = Math.min(1, elapsed / HOLD_MS);
+
+    if      (target === 'top')    setArcPct(topArc, pct);
+    else if (target === 'bottom') setArcPct(bottomArc, pct);
+    else if (target === 'like')   likeBar.style.width = (pct * 100) + '%';
+    else if (target === 'sub')    subBar.style.width  = (pct * 100) + '%';
+
+    if (elapsed >= HOLD_MS) {
+      holdDone = true;
+      triggerAction(target);
+      // Reset progress visuals
+      resetArc(topArc);
+      resetArc(bottomArc);
+      likeBar.style.width = '0%';
+      subBar.style.width  = '0%';
+    }
+  }
+
+  requestAnimationFrame(tick);
+}
+
+// ══════════════════════════════════════
+//  KEYBOARD
+// ══════════════════════════════════════
+window.addEventListener('keydown', function(e) {
+  keys[e.key] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+    e.preventDefault();
+  }
+});
+window.addEventListener('keyup', function(e) { keys[e.key] = false; });
+
+// ══════════════════════════════════════
+//  MOBILE D-PAD (four-way Joy-Con style)
+// ══════════════════════════════════════
+var dpadCenter = null;
+
+function applyDpadInput(clientX, clientY) {
+  var dx = clientX - dpadCenter.x;
+  var dy = clientY - dpadCenter.y;
+  var DEAD = 12; // dead-zone radius
+  var adx  = Math.abs(dx), ady = Math.abs(dy);
+
+  if (adx < DEAD && ady < DEAD) {
+    dpVx = 0; dpVy = 0; drawDpad(0, 0);
+    return;
+  }
+  if (adx >= ady) {
+    dpVx = dx > 0 ? 1 : -1; dpVy = 0;
+    drawDpad(dx > 0 ? 1 : -1, 0);
+  } else {
+    dpVx = 0; dpVy = dy > 0 ? 1 : -1;
+    drawDpad(0, dy > 0 ? 1 : -1);
+  }
+}
+
+dpadEl.addEventListener('touchstart', function(e) {
+  e.preventDefault();
+  var t    = e.changedTouches[0];
+  var rect = dpadEl.getBoundingClientRect();
+  dpadCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  applyDpadInput(t.clientX, t.clientY);
+}, { passive: false });
+
+dpadEl.addEventListener('touchmove', function(e) {
+  e.preventDefault();
+  if (!dpadCenter) return;
+  applyDpadInput(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+}, { passive: false });
+
+dpadEl.addEventListener('touchend', function(e) {
+  e.preventDefault();
+  dpVx = 0; dpVy = 0; dpadCenter = null;
+  drawDpad(0, 0);
+}, { passive: false });
+
+// ══════════════════════════════════════
+//  FALLBACK: direct tap on Like / Subscribe
+// ══════════════════════════════════════
+likeBtn.addEventListener('click', function() {
+  if (liked.has(idx)) liked.delete(idx); else liked.add(idx);
+  updateLikeStyle();
+});
+subBtn.addEventListener('click', function() {
+  var author = SHORTS[idx].author;
+  if (subscribed.has(author)) subscribed.delete(author);
+  else subscribed.add(author);
+  updateSubStyle();
+  explode(subBtn);
+});
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+function init() {
+  drawSoul();
+  drawDpad(0, 0);
+  // Start soul at centre of arena
+  soulX = (arena.offsetWidth  - SOUL_W) / 2;
+  soulY = (arena.offsetHeight - SOUL_H) / 2;
+  loadShort(0);
+  requestAnimationFrame(tick);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+</script>
+</body>
+</html>

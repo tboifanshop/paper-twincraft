@@ -1,4 +1,4 @@
-const CACHE = "twincraft-v1"
+const CACHE = "twincraft-v2"
 
 self.addEventListener("install", e => {
   e.waitUntil(
@@ -6,6 +6,7 @@ self.addEventListener("install", e => {
       cache.addAll([
         "./",
         "./index.html",
+        "./shorts.html",
         "./manifest.json"
       ])
     )
