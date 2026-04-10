@@ -198,7 +198,7 @@
 
     <!-- Short info -->
     <div id="short-info">
-      <div id="short-title">Loading&#8230;</div>
+      <div id="short-title">Loading&hellip;</div>
       <div id="short-author"></div>
     </div>
     <div id="short-counter"></div>
@@ -210,7 +210,7 @@
         <div class="btn-bar" id="sub-bar"></div>
       </div>
       <div id="like-btn" class="interact-btn">
-        &#9825; Like
+        <span aria-hidden="true">&#9825;</span> Like
         <div class="btn-bar" id="like-bar"></div>
       </div>
     </div>
@@ -413,7 +413,7 @@ function loadShort(newIdx) {
       '?autoplay=1&mute=1&loop=1&playlist=' + s.id +
       '&controls=1&modestbranding=1&rel=0';
     shortTitle.textContent  = s.title;
-    shortAuthor.textContent = '\u2665 ' + s.author;
+    shortAuthor.textContent = s.author;
     shortCtr.textContent    = (idx + 1) + ' / ' + SHORTS.length;
     updateLikeStyle();
     updateSubStyle();
@@ -558,7 +558,7 @@ function tick() {
   // Add d-pad contribution
   dx += dpVx;
   dy += dpVy;
-  // Normalise diagonal so speed is consistent
+  // Normalize diagonal so speed is consistent
   const mag = Math.sqrt(dx * dx + dy * dy);
   if (mag > 1) { dx /= mag; dy /= mag; }
 
@@ -626,13 +626,13 @@ window.addEventListener('keyup', function(e) { keys[e.key] = false; });
 // ══════════════════════════════════════
 //  MOBILE D-PAD (four-way Joy-Con style)
 // ══════════════════════════════════════
-var dpadCenter = null;
+let dpadCenter = null;
 
 function applyDpadInput(clientX, clientY) {
-  var dx = clientX - dpadCenter.x;
-  var dy = clientY - dpadCenter.y;
-  var DEAD = 12; // dead-zone radius
-  var adx  = Math.abs(dx), ady = Math.abs(dy);
+  const dx   = clientX - dpadCenter.x;
+  const dy   = clientY - dpadCenter.y;
+  const DEAD = 12; // dead-zone radius
+  const adx  = Math.abs(dx), ady = Math.abs(dy);
 
   if (adx < DEAD && ady < DEAD) {
     dpVx = 0; dpVy = 0; drawDpad(0, 0);
@@ -649,8 +649,8 @@ function applyDpadInput(clientX, clientY) {
 
 dpadEl.addEventListener('touchstart', function(e) {
   e.preventDefault();
-  var t    = e.changedTouches[0];
-  var rect = dpadEl.getBoundingClientRect();
+  const t    = e.changedTouches[0];
+  const rect = dpadEl.getBoundingClientRect();
   dpadCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   applyDpadInput(t.clientX, t.clientY);
 }, { passive: false });
@@ -675,7 +675,7 @@ likeBtn.addEventListener('click', function() {
   updateLikeStyle();
 });
 subBtn.addEventListener('click', function() {
-  var author = SHORTS[idx].author;
+  const author = SHORTS[idx].author;
   if (subscribed.has(author)) subscribed.delete(author);
   else subscribed.add(author);
   updateSubStyle();
@@ -688,7 +688,7 @@ subBtn.addEventListener('click', function() {
 function init() {
   drawSoul();
   drawDpad(0, 0);
-  // Start soul at centre of arena
+  // Start soul at center of arena
   soulX = (arena.offsetWidth  - SOUL_W) / 2;
   soulY = (arena.offsetHeight - SOUL_H) / 2;
   loadShort(0);
