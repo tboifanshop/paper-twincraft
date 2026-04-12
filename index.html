@@ -129,7 +129,7 @@
     finished = true;
     overlay.classList.add("is-fading");
     removeTimer = window.setTimeout(() => overlay.remove(), fadeDuration + 50);
-    window.removeEventListener("keydown", skip, true);
+    window.removeEventListener("keydown", skip, { capture: true });
   };
 
   const skip = () => {
