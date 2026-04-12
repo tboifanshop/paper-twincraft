@@ -117,8 +117,7 @@
   const basePath = hasFileName
     ? pathName.slice(0, pathName.lastIndexOf("/") + 1) || "/"
     : pathName.replace(/\/?$/, "/");
-  const normalizedBasePath = basePath.endsWith("/") ? basePath : `${basePath}/`;
-  cursor.src = `${normalizedBasePath}public/images/intro-cursor.svg`;
+  cursor.src = `${basePath}public/images/intro-cursor.svg`;
   cursor.onerror = () => { cursor.style.display = "none"; };
 
   let finished = false;
