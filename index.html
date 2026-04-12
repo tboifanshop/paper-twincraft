@@ -138,7 +138,7 @@
   };
 
   overlay.addEventListener("pointerdown", skip, { once: true });
-  window.addEventListener("keydown", skip, true);
+  window.addEventListener("keydown", skip, { capture: true, once: true });
 
   hideTimer = window.setTimeout(finish, cursorDuration + blackHoldDuration);
 
