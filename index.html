@@ -6,8 +6,56 @@
   <title>flash mobile overlay</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://unpkg.com/@ruffle-rs/ruffle"></script>
+  <style>
+    #intro-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      background: #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 1;
+      transition: opacity 500ms linear;
+    }
+
+    #intro-overlay.is-fading {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #intro-cursor {
+      width: min(70vmin, 520px);
+      max-width: 95vw;
+      image-rendering: pixelated;
+      transform-origin: center center;
+      animation: intro-cursor-shrink 1800ms linear forwards;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    @keyframes intro-cursor-shrink {
+      from {
+        transform: scale(2.2);
+        opacity: 1;
+      }
+      to {
+        transform: scale(0.02);
+        opacity: 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #intro-overlay { transition-duration: 150ms; }
+      #intro-cursor { animation: none; opacity: 0; }
+    }
+  </style>
 </head>
 <body>
+
+<div id="intro-overlay" aria-hidden="true">
+  <img id="intro-cursor" alt="">
+</div>
 
 <nav style="position:fixed;top:0;left:0;right:0;height:32px;background:rgba(0,0,0,0.85);display:flex;align-items:center;gap:12px;padding:0 10px;font-family:'Courier New',monospace;font-size:11px;z-index:9999;border-bottom:1px solid #5fa8d3;">
   <span style="color:#5fa8d3;">&#9670; DELTATUBE</span>
@@ -50,5 +98,55 @@
 >
 
 <script src="main.js"></script>
+<script>
+(() => {
+  const overlay = document.getElementById("intro-overlay");
+  const cursor = document.getElementById("intro-cursor");
+  if (!overlay || !cursor) return;
+
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cursorDuration = prefersReducedMotion ? 0 : 1800;
+  const blackHoldDuration = prefersReducedMotion ? 60 : 140;
+  const fadeDuration = prefersReducedMotion ? 150 : 500;
+
+  overlay.style.transitionDuration = `${fadeDuration}ms`;
+  cursor.style.animationDuration = `${cursorDuration}ms`;
+
+  const pathName = window.location.pathname;
+  const hasFileName = /\.[^/]+$/.test(pathName);
+  const basePath = hasFileName
+    ? pathName.slice(0, pathName.lastIndexOf("/") + 1) || "/"
+    : pathName.replace(/\/?$/, "/");
+  cursor.src = `${basePath}public/images/intro-cursor.svg`;
+  cursor.onerror = () => { cursor.style.display = "none"; };
+
+  let finished = false;
+  let hideTimer;
+  let removeTimer;
+
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    overlay.classList.add("is-fading");
+    removeTimer = window.setTimeout(() => overlay.remove(), fadeDuration + 50);
+    window.removeEventListener("keydown", skip, true);
+  };
+
+  const skip = () => {
+    window.clearTimeout(hideTimer);
+    finish();
+  };
+
+  overlay.addEventListener("pointerdown", skip, { once: true });
+  window.addEventListener("keydown", skip, true);
+
+  hideTimer = window.setTimeout(finish, cursorDuration + blackHoldDuration);
+
+  window.addEventListener("beforeunload", () => {
+    window.clearTimeout(hideTimer);
+    window.clearTimeout(removeTimer);
+  }, { once: true });
+})();
+</script>
 </body>
 </html>
