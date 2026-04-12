@@ -117,19 +117,22 @@
   const basePath = hasFileName
     ? pathName.slice(0, pathName.lastIndexOf("/") + 1) || "/"
     : pathName.replace(/\/?$/, "/");
-  cursor.src = `${basePath}public/images/intro-cursor.svg`;
+  const normalizedBasePath = basePath.endsWith("/") ? basePath : `${basePath}/`;
+  cursor.src = `${normalizedBasePath}public/images/intro-cursor.svg`;
   cursor.onerror = () => { cursor.style.display = "none"; };
 
   let finished = false;
   let hideTimer;
   let removeTimer;
 
+  const keydownListenerOptions = { capture: true, once: true };
+
   const finish = () => {
     if (finished) return;
     finished = true;
     overlay.classList.add("is-fading");
     removeTimer = window.setTimeout(() => overlay.remove(), fadeDuration + 50);
-    window.removeEventListener("keydown", skip, { capture: true });
+    window.removeEventListener("keydown", skip, keydownListenerOptions);
   };
 
   const skip = () => {
@@ -138,7 +141,7 @@
   };
 
   overlay.addEventListener("pointerdown", skip, { once: true });
-  window.addEventListener("keydown", skip, { capture: true, once: true });
+  window.addEventListener("keydown", skip, keydownListenerOptions);
 
   hideTimer = window.setTimeout(finish, cursorDuration + blackHoldDuration);
 
